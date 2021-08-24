@@ -22,12 +22,17 @@ var PandocCodeDecorator = class {
     let result = [];
     let offset = this._node.parentElement.dataset.sourceOffset && -Number(this._node.parentElement.dataset.sourceOffset) || 0;
     for (const line of lines) {
+      let lineNumber = Number(line.id.split("-").pop());
+      let column = 1;
       Array.from(line.childNodes).filter((n) => n.nodeType === n.ELEMENT_NODE && n.nodeName === "SPAN").forEach((n) => {
         result.push({
           offset,
+          line: lineNumber,
+          column,
           node: n
         });
         offset += n.innerText.length;
+        column += n.innerText.length;
       });
       offset += 1;
     }
@@ -35,6 +40,8 @@ var PandocCodeDecorator = class {
   }
   locateEntry(offset) {
     let candidate;
+    if (offset === Infinity)
+      return void 0;
     for (let i = 0; i < this._elementEntryPoints.length; ++i) {
       const entry = this._elementEntryPoints[i];
       if (entry.offset > offset) {
@@ -43,6 +50,21 @@ var PandocCodeDecorator = class {
       candidate = entry;
     }
     return void 0;
+  }
+  offsetToLineColumn(offset) {
+    let entry = this.locateEntry(offset);
+    if (entry === void 0) {
+      const entries = this._elementEntryPoints;
+      const last = entries[entries.length - 1];
+      return {
+        line: last.line,
+        column: last.column + Math.min(last.node.innerText.length, offset - last.offset)
+      };
+    }
+    return {
+      line: entry.entry.line,
+      column: entry.entry.column + offset - entry.entry.offset
+    };
   }
   ensureExactSpan(start, end) {
     const splitEntry = (entry, offset) => {
@@ -82,6 +104,21 @@ var PandocCodeDecorator = class {
     for (let i = startIndex; i < endIndex; ++i) {
       for (const cssClass of classes) {
         this._elementEntryPoints[i].node.classList.add(cssClass);
+      }
+    }
+  }
+  clearSpan(start, end, classes) {
+    this.ensureExactSpan(start, end);
+    const startEntry = this.locateEntry(start);
+    const endEntry = this.locateEntry(end);
+    if (startEntry === void 0) {
+      return;
+    }
+    const startIndex = startEntry.index;
+    const endIndex = endEntry && endEntry.index || this._elementEntryPoints.length;
+    for (let i = startIndex; i < endIndex; ++i) {
+      for (const cssClass of classes) {
+        this._elementEntryPoints[i].node.classList.remove(cssClass);
       }
     }
   }

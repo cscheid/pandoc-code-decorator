@@ -10,6 +10,8 @@ export class PandocCodeDecorator
     this.initializeEntryPoints();
   }
 
+  
+
   // ensure there are no naked #text elements by replacing them
   // with unclassed spans
   normalizeCodeRange() {
@@ -32,15 +34,20 @@ export class PandocCodeDecorator
     let offset = (this._node.parentElement.dataset.sourceOffset &&
                   -Number(this._node.parentElement.dataset.sourceOffset)) || 0;
     for (const line of lines) {
+      let lineNumber = Number(line.id.split("-").pop());
+      let column = 1;
       Array.from(line.childNodes)
         .filter(n => n.nodeType === n.ELEMENT_NODE && n.nodeName === "SPAN")
         .forEach(n => {
           result.push({
             offset,
+            line: lineNumber,
+            column,
             node: n
           });
           // FIXME This might bite me wrt Unicode weirdness
-          offset += n.innerText.length; 
+          offset += n.innerText.length;
+          column += n.innerText.length;
         });
       offset += 1; // take line breaks into account
     }
@@ -50,6 +57,8 @@ export class PandocCodeDecorator
   locateEntry(offset) {
     // FIXME use binary search here
     let candidate;
+    if (offset === Infinity)
+      return undefined; // early out a common case
     for (let i = 0; i < this._elementEntryPoints.length; ++i) {
       const entry = this._elementEntryPoints[i];
       if (entry.offset > offset) {
@@ -58,7 +67,25 @@ export class PandocCodeDecorator
       candidate = entry;
     }
     return undefined;
-  };
+  }
+
+  offsetToLineColumn(offset) {
+    let entry = this.locateEntry(offset);
+    if (entry === undefined) {
+      const entries = this._elementEntryPoints;
+      const last = entries[entries.length - 1];
+
+      return {
+        line: last.line,
+        column: (last.column +
+                 Math.min(last.node.innerText.length, offset - last.offset))
+      };
+    }
+    return {
+      line: entry.entry.line,
+      column: entry.entry.column + offset - entry.entry.offset
+    };
+  }
 
   // make sure the span [start, end) happens
   // on element boundaries, splitting nodes
@@ -103,6 +130,22 @@ export class PandocCodeDecorator
     for (let i = startIndex; i < endIndex; ++i) {
       for (const cssClass of classes) {
         this._elementEntryPoints[i].node.classList.add(cssClass);
+      }
+    }
+  }
+
+  clearSpan(start, end, classes) {
+    this.ensureExactSpan(start, end);
+    const startEntry = this.locateEntry(start);
+    const endEntry = this.locateEntry(end);
+    if (startEntry === undefined) {
+      return;
+    }
+    const startIndex = startEntry.index;
+    const endIndex = (endEntry && endEntry.index) || this._elementEntryPoints.length;
+    for (let i = startIndex; i < endIndex; ++i) {
+      for (const cssClass of classes) {
+        this._elementEntryPoints[i].node.classList.remove(cssClass);
       }
     }
   }
