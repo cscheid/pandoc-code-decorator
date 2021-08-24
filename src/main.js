@@ -66,7 +66,11 @@ export class PandocCodeDecorator
       }
       candidate = entry;
     }
-    return undefined;
+    if (offset < candidate.offset + candidate.node.textContent.length) {
+      return { entry: candidate, index: this._elementEntryPoints.length - 1 };
+    } else {
+      return undefined;
+    }
   }
 
   offsetToLineColumn(offset) {
