@@ -22,7 +22,7 @@ export class PandocCodeDecorator
         .filter(n => n.nodeType === n.TEXT_NODE)
         .forEach(n => {
           const newSpan = document.createElement("span");
-          newSpan.innerText = n.wholeText;
+          newSpan.textContent = n.wholeText;
           n.replaceWith(newSpan);
         });
     }
@@ -46,8 +46,8 @@ export class PandocCodeDecorator
             node: n
           });
           // FIXME This might bite me wrt Unicode weirdness
-          offset += n.innerText.length;
-          column += n.innerText.length;
+          offset += n.textContent.length;
+          column += n.textContent.length;
         });
       offset += 1; // take line breaks into account
     }
@@ -78,7 +78,7 @@ export class PandocCodeDecorator
       return {
         line: last.line,
         column: (last.column +
-                 Math.min(last.node.innerText.length, offset - last.offset))
+                 Math.min(last.node.textContent.length, offset - last.offset))
       };
     }
     return {
@@ -96,10 +96,10 @@ export class PandocCodeDecorator
       for (const cssClass of entry.node.classList) {
         newSpan.classList.add(cssClass);
       }
-      const beforeText = entry.node.innerText.slice(0, offset - entry.offset);
-      const afterText = entry.node.innerText.slice(offset - entry.offset);
-      entry.node.innerText = beforeText;
-      newSpan.innerText = afterText;
+      const beforeText = entry.node.textContent.slice(0, offset - entry.offset);
+      const afterText = entry.node.textContent.slice(offset - entry.offset);
+      entry.node.textContent = beforeText;
+      newSpan.textContent = afterText;
       entry.node.after(newSpan);
       this._elementEntryPoints.push({
         offset,
