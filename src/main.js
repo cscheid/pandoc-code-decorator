@@ -106,8 +106,10 @@ export class PandocCodeDecorator
       newSpan.textContent = afterText;
       entry.node.after(newSpan);
       this._elementEntryPoints.push({
-        offset,
-        node: newSpan
+        column: entry.column + offset - entry.offset,
+        line: entry.line,
+        node: newSpan,
+        offset
       });
       this._elementEntryPoints.sort((a, b) => a.offset - b.offset);
     };
