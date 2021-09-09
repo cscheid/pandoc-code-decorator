@@ -10,8 +10,6 @@ export class PandocCodeDecorator
     this.initializeEntryPoints();
   }
 
-  
-
   // ensure there are no naked #text elements by replacing them
   // with unclassed spans
   normalizeCodeRange() {
@@ -91,6 +89,43 @@ export class PandocCodeDecorator
     };
   }
 
+  // returns a generator that yields entry points of the selection
+  // 
+  // NB: this assumes that the generator is entirely consumed before
+  // other operations happen which might mutate the array of entry
+  // points
+  * spanSelection(start, end) {
+    this.ensureExactSpan(start, end);
+    const startEntry = this.locateEntry(start);
+    const endEntry = this.locateEntry(end);
+    if (startEntry === undefined) {
+      return;
+    }
+    const startIndex = startEntry.index;
+    const endIndex = (endEntry && endEntry.index) || this._elementEntryPoints.length;
+    for (let i = startIndex; i < endIndex; ++i) {
+      yield this._elementEntryPoints[i];
+    }
+  }
+
+  // add every class in classes to the elements between start and end
+  decorateSpan(start, end, classes) {
+    for (const entryPoint of this.spanSelection(start, end)) {
+      for (const cssClass of classes) {
+        entryPoint.node.classList.add(cssClass);
+      }
+    }
+  }
+
+  // remove every class in classes from the elements between start and end
+  clearSpan(start, end, classes) {
+    for (const entryPoint of this.spanSelection(start, end)) {
+      for (const cssClass of classes) {
+        entryPoint.node.classList.remove(cssClass);
+      }
+    }
+  }
+  
   // make sure the span [start, end) happens
   // on element boundaries, splitting nodes
   // and updating _elementEntryPoints if needed
@@ -121,22 +156,6 @@ export class PandocCodeDecorator
     const endEntry = this.locateEntry(end);
     if (endEntry !== undefined && endEntry.entry.offset !== end) {
       splitEntry(endEntry.entry, end);
-    }
-  }
-
-  decorateSpan(start, end, classes) {
-    this.ensureExactSpan(start, end);
-    const startEntry = this.locateEntry(start);
-    const endEntry = this.locateEntry(end);
-    if (startEntry === undefined) {
-      return;
-    }
-    const startIndex = startEntry.index;
-    const endIndex = (endEntry && endEntry.index) || this._elementEntryPoints.length;
-    for (let i = startIndex; i < endIndex; ++i) {
-      for (const cssClass of classes) {
-        this._elementEntryPoints[i].node.classList.add(cssClass);
-      }
     }
   }
 
